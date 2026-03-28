@@ -19,4 +19,4 @@ DEFAULT_EXPERIMENT_NAME = os.getenv('MLFLOW_EXPERIMENT_NAME', 'Loan Default Pred
 DEFAULT_MODEL_NAME = os.getenv('MLFLOW_MODEL_NAME', 'loan_default_predictor')
 
 # For Docker Compose the service name is "mlflow". Outside Docker this can be overridden.
-DEFAULT_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5001")
+DEFAULT_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
