@@ -12,10 +12,12 @@ services:
       "--host", "0.0.0.0",
       "--port", "5000",
       "--backend-store-uri", "sqlite:////mlflow/mlflow.db",
-      "--default-artifact-root", "/mlflow/artifacts"
+      "--artifacts-destination", "/mlflow/artifacts",
+      "--serve-artifacts",
+      "--allowed-hosts", "localhost,127.0.0.1,mlflow,mlflow:5000"
       ]
     ports:
-      - "5000:5000"
+      - "5001:5000"
     volumes:
       - .:/app
       - mlflow_data:/mlflow
@@ -45,6 +47,23 @@ services:
     volumes:
       - .:/app
     restart: unless-stopped
+
+  streamlit:
+      build: .
+      container_name: loan-mlops-streamlit
+      working_dir: /app
+      depends_on:
+        api:
+          condition: service_started
+      environment:
+        PYTHONPATH: /app/src
+        LOAN_API_URL: http://api:8000
+      command: streamlit run streamlit_app.py --server.address 0.0.0.0 --server.port 8501
+      ports:
+        - "8501:8501"
+      volumes:
+        - .:/app
+      restart: unless-stopped
 
 volumes:
   mlflow_data:

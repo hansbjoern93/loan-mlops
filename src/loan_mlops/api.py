@@ -64,7 +64,8 @@ def load_registered_model(model_name: str = DEFAULT_MODEL_NAME, tracking_uri: st
     else:
         selected_version = sorted(versions, key=lambda v: int(v.version), reverse=True)[0]
 
-    model = mlflow.sklearn.load_model(f"runs:/{selected_version.run_id}/model")
+    model = mlflow.sklearn.load_model(
+    model_uri=f"models:/{model_name}/{selected_version.version}")
     return model, selected_version
 
 
