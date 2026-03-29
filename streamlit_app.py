@@ -4,6 +4,7 @@ import os
 from typing import Any
 
 import pandas as pd
+import numpy as np
 import requests
 import streamlit as st
 
@@ -58,43 +59,43 @@ with st.sidebar:
     with st.expander("Erklärung der Eingabefelder"):
         st.markdown(
             """
-**credit_policy**  
+**Kreditvergabekriterien erfüllt**  
 Ja, wenn der Kunde die Kreditvergabekriterien von LendingClub erfüllt, sonst Nein.
 
-**purpose**  
+**Kreditzweck**  
 Der Zweck des Kredits. Mögliche Werte sind `credit_card`, `debt_consolidation`, `educational`, `major_purchase`, `small_business` und `all_other`.
 
-**int_rate**  
-Der Zinssatz des Kredits als Anteil. Ein Zinssatz von 11 % wird zum Beispiel als `0.11` gespeichert.
+**Zinssatz**  
+Der Zinssatz des Kredits in Prozent.
 
-**installment**  
+**Monatliche Rate**  
 Die monatliche Rate, die der Kreditnehmer zahlen müsste, wenn der Kredit vergeben wird.
 
-**log_annual_inc**  
-Der natürliche Logarithmus des selbst angegebenen Jahreseinkommens.
+**Jahreseinkommen**  
+Das selbst angegebene Jahreseinkommen des Kreditnehmers.
 
-**dti**  
+**Debt-to-Income Ratio**  
 Debt-to-Income Ratio, also Verhältnis von Schulden zu Jahreseinkommen.
 
-**fico**  
+**FICO Score**  
 Der FICO-Kredit-Score des Kreditnehmers.
 
-**days_with_cr_line**  
+**Tage mit Kreditlinie**  
 Die Anzahl der Tage, seit denen der Kreditnehmer über eine Kreditlinie verfügt.
 
-**revol_bal**  
+**Revolving Balance**  
 Der offene Revolving-Betrag, also z. B. nicht beglichene Kreditkartenschulden am Ende eines Abrechnungszyklus.
 
-**revol_util**  
+**Revolving Utilization**  
 Die Auslastung der Revolving-Kreditlinie, also genutzter Anteil der verfügbaren Kreditlinie.
 
-**inq_last_6mths**  
+**Kreditanfragen letzte 6 Monate**  
 Anzahl der Kreditanfragen durch Gläubiger in den letzten 6 Monaten.
 
-**delinq_2yrs**  
+**Zahlungsverzüge in 2 Jahren**  
 Anzahl der Fälle, in denen der Kreditnehmer in den letzten 2 Jahren mehr als 30 Tage mit einer Zahlung im Rückstand war.
 
-**pub_rec**  
+**Negative öffentliche Einträge**  
 Anzahl negativer öffentlicher Einträge, z. B. Insolvenzen, Steuerpfandrechte oder Gerichtsurteile.
 """
         )
@@ -125,22 +126,23 @@ with col1:
         ],
         index=2,
     )
-    int_rate = st.slider(
-        "Zinssatz",
-        min_value=0.01,
-        max_value=0.30,
-        value=float(base["int_rate"]),
-        step=0.005,
+    int_rate_percent = st.slider(
+        "Zinssatz (%)",
+        min_value=1.0,
+        max_value=30.0,
+        value=12.0,
+        step=0.5,
     )
     installment = st.number_input(
         "Monatliche Rate",
         min_value=1.0,
         value=float(base["installment"]),
     )
-    log_annual_inc = st.number_input(
-        "log(Jahreseinkommen)",
-        min_value=1.0,
-        value=float(base["log_annual_inc"]),
+    annual_inc = st.number_input(
+        "Jahreseinkommen (€)",
+        min_value=1000.0,
+        value=50000.0,
+        step=1000.0,
     )
     dti = st.number_input(
         "Debt-to-Income Ratio",
@@ -192,9 +194,9 @@ credit_policy = 1 if credit_policy_label == "Ja" else 0
 payload = {
     "credit_policy": credit_policy,
     "purpose": purpose,
-    "int_rate": float(int_rate),
+    "int_rate": float(int_rate_percent / 100),
     "installment": float(installment),
-    "log_annual_inc": float(log_annual_inc),
+    "log_annual_inc": float(np.log(annual_inc)),
     "dti": float(dti),
     "fico": int(fico),
     "days_with_cr_line": float(days_with_cr_line),
