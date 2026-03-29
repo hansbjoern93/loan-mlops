@@ -42,7 +42,8 @@ def load_registered_model(
     mlflow.set_tracking_uri(tracking_uri)
     client = MlflowClient(tracking_uri=tracking_uri)
     best_model_version = client.get_latest_versions(model_name, stages=["Staging"])[0]
-    best_model = mlflow.sklearn.load_model(f"runs:/{best_model_version.run_id}/model")
+    best_model = mlflow.sklearn.load_model(
+    model_uri=f"models:/loan_default_predictor/{best_model_version.version}")
     return client, best_model_version, best_model
 
 

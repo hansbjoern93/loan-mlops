@@ -1,5 +1,11 @@
+.git
+.gitignore
+mlops-venv
 .venv
 __pycache__
+*.pyc
 .ipynb_checkpoints
-.git
-.vscode
+.DS_Store
+mlruns
+notebooks/*.png
+*.zip

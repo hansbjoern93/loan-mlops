@@ -1163,23 +1163,456 @@ Dann können Vorhersagen unlogisch wirken, obwohl die API technisch korrekt funk
 
 ---
 
-# Zusammenhang der Notebooks
+# Notebook 06 – Modellverpackung und Deployment mit Docker
 
-Die bisherigen Notebooks bilden zusammen eine durchgehende Pipeline:
+## Ziel
 
-1. Rohdaten prüfen
-2. Daten vorbereiten
-3. Modelle trainieren
-4. Modell bewerten
-5. Vorhersagen über API ermöglichen
+In diesem Notebook wird das bisher entwickelte System so vorbereitet, dass es in einer standardisierten Umgebung ausgeführt werden kann.
 
-Wenn später weitere Notebooks ergänzt werden, sollten sie an dieser Kette anknüpfen und klar beschreiben:
+Dazu wird das Projekt in Docker-Container verpackt.
 
-- welche Eingabe sie verwenden
-- was sie verarbeiten
-- welche Ausgabe sie erzeugen
+Das Ziel ist:
+
+- reproduzierbare Ausführung
+- klare Trennung der Komponenten
+- einfaches Starten des gesamten Systems
 
 ---
+
+## Warum Docker verwendet wird
+
+Ohne Docker hängt die Ausführung stark vom lokalen Setup ab:
+
+- Python-Version
+- installierte Pakete
+- Betriebssystem
+
+Das kann zu Problemen führen wie:
+
+- Code läuft bei einer Person, bei einer anderen nicht
+- unterschiedliche Ergebnisse
+- schwer reproduzierbare Fehler
+
+Docker löst dieses Problem, indem eine feste Umgebung definiert wird.
+
+---
+
+## Dockerfile
+
+Das Dockerfile beschreibt, wie die Projektumgebung aufgebaut wird.
+
+Typische Inhalte sind:
+
+- Python-Basisimage
+- Installation von Abhängigkeiten (`requirements.txt`)
+- Kopieren des Projektcodes
+
+Wichtig ist:
+
+Das gleiche Dockerfile wird für mehrere Services verwendet, zum Beispiel:
+
+- MLflow
+- FastAPI
+- Streamlit
+
+Der Unterschied liegt nicht im Image, sondern im Startbefehl.
+
+---
+
+## Docker Compose
+
+Mit Docker Compose werden mehrere Container gemeinsam gestartet.
+
+Im Projekt werden drei Services verwendet:
+
+- **mlflow**: Tracking und Modellverwaltung  
+- **api**: Bereitstellung des Modells über HTTP  
+- **streamlit**: Benutzeroberfläche  
+
+---
+
+## Wie die Services zusammenarbeiten
+
+Die Kommunikation erfolgt über ein gemeinsames Netzwerk:
+
+- API greift auf MLflow zu (`mlflow:5000`)
+- Streamlit greift auf API zu (`api:8000`)
+- Nutzer greift über `localhost` auf die Services zu
+
+---
+
+## Ports im Überblick
+
+- MLflow: `localhost:5001`
+- API: `localhost:8000`
+- Streamlit: `localhost:8501`
+
+---
+
+## Starten der Container
+
+Einzelne Services können gestartet werden:
+
+```bash
+docker compose up -d mlflow
+docker compose up -d api
+docker compose up -d streamlit
+```
+
+Das gesamte System kann gemeinsam gestartet werden:
+
+```bash
+docker compose up -d --build
+```
+
+## Warum dieses Notebook wichtig ist
+
+Dieses Notebook macht aus einzelnen Komponenten ein zusammenhängendes System.
+
+Erst hier wird das Projekt wirklich:
+
+- reproduzierbar
+- portabel
+- bereit für den Einsatz
+
+---
+
+# Notebook 07 – Tests und Monitoring
+
+## Ziel
+
+In diesem Notebook wird sichergestellt, dass das System zuverlässig funktioniert.
+
+Dazu werden zwei Bereiche betrachtet:
+
+- automatisierte Tests
+- Monitoring-Konzept
+
+---
+
+## Warum Tests wichtig sind
+
+Tests helfen dabei, Fehler früh zu erkennen.
+
+Ohne Tests können Änderungen am Code unbemerkt Probleme verursachen.
+
+Beispiele:
+
+- falsche Vorverarbeitung
+- API liefert falsche Struktur
+- Modell wird falsch geladen
+
+---
+
+## Arten von Tests im Projekt
+
+### Unit Tests
+
+Unit Tests prüfen einzelne Komponenten isoliert.
+
+Im Projekt sind das vor allem:
+
+- Vorverarbeitung der Daten
+- Feature Engineering
+- Trainingshilfsfunktionen
+
+### Integrationstests
+
+Integrationstests prüfen das Zusammenspiel mehrerer Komponenten.
+
+Hier wird vor allem die API getestet.
+
+---
+
+## Aufbau der Tests
+
+Die Tests sind im Ordner `tests/` organisiert.
+
+Wichtige Dateien sind:
+
+- `test_features.py`
+- `test_train.py`
+- `test_api.py`
+
+---
+
+## Erklärung der einzelnen Tests
+
+### test_features.py
+
+Diese Datei enthält Unit Tests für die Datenvorverarbeitung und die Umwandlung von Eingaben in das Modellformat.
+
+#### test_preprocessing_pipeline_creates_all_model_columns()
+
+Prüft, ob nach der Transformation alle benötigten Modellspalten vorhanden sind.
+
+Warum wichtig:
+
+Das Modell erwartet eine feste Spaltenstruktur.
+
+#### test_preprocess_api_payload_returns_correct_schema()
+
+Prüft, ob API-Eingaben korrekt in das Modellformat umgewandelt werden.
+
+Dabei wird kontrolliert:
+
+- vollständige Spalten
+- korrekte Struktur
+- richtige Kodierung
+
+Warum wichtig:
+
+Die API muss exakt die gleiche Struktur liefern wie beim Training.
+
+---
+
+### test_train.py
+
+Diese Datei enthält Unit Tests für Teile der Trainingslogik.
+
+#### test_split_training_data_separates_target()
+
+Prüft, ob die Zielvariable korrekt von den Eingabedaten getrennt wird.
+
+Warum wichtig:
+
+Das Modell darf die Zielvariable nicht als Input sehen.
+
+#### test_get_model_candidates_contains_expected_models()
+
+Prüft, ob alle erwarteten Modelltypen erzeugt werden.
+
+Warum wichtig:
+
+Sichert ab, dass die richtigen Modelle trainiert werden.
+
+#### test_build_model_description_contains_key_information()
+
+Prüft, ob wichtige Informationen über das Modell korrekt erzeugt werden.
+
+Warum wichtig:
+
+Diese Informationen werden später dokumentiert oder gespeichert.
+
+---
+
+### test_api.py
+
+Diese Datei enthält Integrationstests für die API.
+
+#### test_root_endpoint_returns_metadata()
+
+Prüft, ob die API erreichbar ist.
+
+#### test_health_endpoint_with_loaded_model()
+
+Prüft, ob die API korrekt meldet, dass ein Modell geladen ist.
+
+#### test_predict_endpoint_low_risk_case()
+
+Testet eine Vorhersage für einen eher risikoarmen Kredit.
+
+#### test_predict_endpoint_high_risk_case()
+
+Testet eine Vorhersage für einen risikoreicheren Kredit.
+
+#### test_predict_batch_endpoint()
+
+Prüft, ob mehrere Kredite gleichzeitig verarbeitet werden können.
+
+#### test_predict_returns_503_if_no_model_loaded()
+
+Prüft, ob die API korrekt reagiert, wenn kein Modell verfügbar ist.
+
+---
+
+## Tests ausführen
+
+Die Tests können im Terminal ausgeführt werden:
+
+```bash
+pytest tests -q
+```
+
+## Monitoring – Grundidee
+
+Während Tests die Funktionalität prüfen, dient Monitoring dazu, Probleme im laufenden Betrieb zu erkennen.
+
+---
+
+## Was überwacht werden sollte
+
+### System
+
+- läuft die API?
+- antwortet sie korrekt?
+- treten Fehler auf?
+
+### Daten
+
+- ungewöhnliche Eingaben
+- fehlende Werte
+- neue Kategorien
+
+### Modell
+
+- Veränderung der Vorhersagen
+- mögliche Drift
+
+---
+
+## Beispiel im Projekt
+
+Der `/health`-Endpunkt der API dient als einfacher Monitoring-Punkt.
+
+Er zeigt:
+
+- ob die API läuft
+- ob das Modell geladen ist
+
+---
+
+## Warum dieses Notebook wichtig ist
+
+Dieses Notebook ergänzt das Projekt um Qualitätssicherung.
+
+Damit wird das System:
+
+- stabiler
+- vertrauenswürdiger
+- besser wartbar
+
+---
+
+# Notebook 08 – Streamlit Dashboard
+
+## Ziel
+
+In diesem Notebook wird eine Benutzeroberfläche für das Modell bereitgestellt.
+
+Das Streamlit-Dashboard ermöglicht es, Kreditdaten einzugeben und direkt eine Vorhersage zu erhalten.
+
+---
+
+## Grundidee
+
+Das Dashboard greift nicht direkt auf das Modell zu.
+
+Stattdessen erfolgt:
+
+1. Eingabe im Dashboard  
+2. Request an die API  
+3. Modellvorhersage  
+4. Anzeige im Dashboard  
+
+---
+
+## Warum diese Trennung sinnvoll ist
+
+Die Architektur trennt:
+
+- Modelllogik (API)
+- Benutzeroberfläche (Streamlit)
+
+Das macht das System:
+
+- flexibler
+- wartbarer
+
+---
+
+## Aufbau des Dashboards
+
+### Eingabe
+
+Nutzer geben Kreditmerkmale ein, z. B.:
+
+- Zinssatz
+- FICO Score
+- Schuldenquote
+
+Binäre Werte werden als **Ja/Nein** dargestellt.
+
+---
+
+### Erklärung der Eingabefelder
+
+Ein ausklappbarer Bereich erklärt die Bedeutung der Variablen.
+
+---
+
+### Vorhersage
+
+Das Dashboard zeigt:
+
+- Ausfallwahrscheinlichkeit
+- Risiko-Einstufung
+
+---
+
+## Start des Dashboards
+
+### Mit Docker
+
+```bash
+docker compose up -d streamlit
+```
+
+### Lokal
+
+```bash
+streamlit run streamlit_app.py
+```
+
+## Zugriff im Browser
+
+`http://localhost:8501`
+
+## Typischer Ablauf
+
+1. API prüfen  
+2. Daten eingeben  
+3. Vorhersage starten  
+4. Ergebnis ansehen  
+
+---
+
+## Designentscheidungen
+
+- Fokus auf Einzelvorhersagen  
+- keine Batch-UI  
+- Ja/Nein statt 0/1  
+- integrierte Feld-Erklärung  
+
+---
+
+## Warum dieses Notebook wichtig ist
+
+Dieses Notebook macht das Projekt sichtbar.
+
+Die gesamte Pipeline wird hier für Nutzer erlebbar:
+
+- Eingabe → Verarbeitung → Vorhersage
+
+
+# Zusammenhang der Notebooks
+
+Die Notebooks bilden zusammen eine durchgehende Machine-Learning- und MLOps-Pipeline:
+
+1. Rohdaten prüfen  
+2. Daten vorbereiten  
+3. Modelle trainieren  
+4. Modell bewerten und registrieren  
+5. Vorhersagen über eine API ermöglichen  
+6. System mit Docker bereitstellen  
+7. Qualität durch Tests und Monitoring absichern  
+8. Modell über ein Dashboard nutzbar machen  
+
+Damit deckt das Projekt den gesamten Lebenszyklus eines Machine-Learning-Systems ab – von den Rohdaten bis zur nutzbaren Anwendung.
+
+---
+
+# Typischer Datenfluss im Projekt
 
 # Typischer Datenfluss im Projekt
 
@@ -1192,11 +1625,11 @@ data/processed/loan_data_preprocessed.csv
     ↓
 MLflow Runs und Modellregistry
     ↓
-API für neue Vorhersagen
-
-
+FastAPI (Vorhersagen über /predict)
+    ↓
+Streamlit Dashboard (Benutzeroberfläche)
 ```
-
+Zusätzlich wird der gesamte Prozess durch Docker reproduzierbar gemacht und durch Tests abgesichert.
 ---
 
 # Häufige Fehlerquellen
@@ -1212,6 +1645,12 @@ Dann kann es in späteren Schritten nicht geladen werden.
 
 ## Vorverarbeitung nicht konsistent
 Das Modell muss dieselbe Logik in Training, Bewertung und API sehen.
+
+## API oder MLflow nicht erreichbar
+Wenn Services nicht laufen oder falsch konfiguriert sind (z. B. falscher Port), funktionieren Vorhersagen nicht.
+
+## Docker-Setup nicht korrekt gestartet
+Wenn Container fehlen oder nicht neu gebaut wurden, kann es zu unerwartetem Verhalten kommen.
 
 ## Unrealistische Testdaten
 Machine-Learning-Modelle verhalten sich außerhalb des gelernten Wertebereichs oft unvorhersehbar.
@@ -1234,6 +1673,7 @@ Hilfreiche Fragen beim Lesen des Codes:
 - Welche Datei oder welches Modell kommt am Ende heraus?
 - Welche Funktion ist für welchen Schritt zuständig?
 - Welche Teile müssen später wiederverwendet werden?
+- Wie greifen API und Dashboard auf das Modell zu?
 
 ---
 
@@ -1244,8 +1684,11 @@ Das Projekt bildet eine vollständige Machine-Learning-Pipeline für Kreditdaten
 - Daten laden und prüfen
 - Daten vorbereiten
 - Modelle trainieren
-- das beste Modell bewerten
+- das beste Modell bewerten und registrieren
 - Vorhersagen über eine API ermöglichen
+- System über Docker bereitstellen
+- Qualität durch Tests absichern
+- Modell über ein Dashboard nutzbar machen
 
 Der wichtigste Punkt beim Einstieg ist nicht, sofort jede einzelne Python-Zeile perfekt zu verstehen.  
 Entscheidend ist zuerst der Gesamtzusammenhang: Datenfluss, Reihenfolge der Schritte und Aufgabe jedes Notebooks.
@@ -1256,4 +1699,4 @@ Wenn dieser Ablauf klar ist, wird auch der Code deutlich verständlicher.
 
 # Kurzfassung in einem Satz
 
-Dieses Projekt lädt Kreditdaten, bereitet sie für Machine Learning auf, trainiert und bewertet Modelle und stellt das ausgewählte Modell anschließend für neue Vorhersagen bereit.
+Dieses Projekt verarbeitet Kreditdaten, trainiert und bewertet Machine-Learning-Modelle und stellt das beste Modell anschließend über eine API und ein Dashboard für neue Vorhersagen bereit.
