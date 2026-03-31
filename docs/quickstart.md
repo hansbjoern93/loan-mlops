@@ -6,7 +6,7 @@ Diese Anleitung ermöglicht es, das gesamte System in wenigen Schritten zu start
 
 ## Hinweis
 
-Für ein besseres Onboarding und Verständnis der Anwendung sollten die Notebooks 1 - 8 durchgearbeitet werden. Genauere Erklärungen und Informationen zur Anwendung und zum Code liefert die `onboarding.md`.
+Für ein besseres Onboarding und Verständnis der Anwendung sollten die Notebooks 1 - 8 durchgearbeitet werden. Genauere Erklärungen und Informationen zur Anwendung und zum Code liefert die [onboarding.md](onboarding.md).
 
 ---
 
